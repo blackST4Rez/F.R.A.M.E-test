@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Error - F.R.A.M.E</title>
+  <link rel="icon" type="image/x-icon" href="static/images/favicon.ico">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet"
+    integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+  
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body, html {
+      height: 100%;
+      font-family: "JetBrains Mono", monospace;
+      overflow: hidden;
+    }
+
+    body {
+      background: white;
+    }
+
+    .main-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      height: 100vh;
+      position: relative;
+    }
+
+    .left-section {
+      background: linear-gradient(135deg, #ff6b6b 0%, #ff5252 100%);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 60px;
+      clip-path: polygon(0 0, 100% 0, 85% 100%, 0 100%);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .left-section::before {
+      content: '';
+      position: absolute;
+      width: 200px;
+      height: 200px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 50%;
+      top: -50px;
+      left: -50px;
+    }
+
+    .left-section::after {
+      content: '';
+      position: absolute;
+      width: 150px;
+      height: 150px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 50%;
+      bottom: 20px;
+      right: 50px;
+    }
+
+    .left-content {
+      position: relative;
+      z-index: 2;
+      color: white;
+      max-width: 85%;
+    }
+
+    .left-title {
+      font-size: 48px;
+      font-weight: 700;
+      margin-bottom: 24px;
+      line-height: 1.2;
+      animation: slideInLeft 0.8s ease-out;
+    }
+
+    .left-description {
+      font-size: 16px;
+      margin-bottom: 32px;
+      opacity: 0.95;
+      line-height: 1.6;
+      animation: slideInLeft 0.8s ease-out 0.2s both;
+    }
+
+    .cta-button {
+      display: inline-block;
+      padding: 12px 32px;
+      border: 2px solid white;
+      color: white;
+      text-decoration: none;
+      border-radius: 25px;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      animation: slideInLeft 0.8s ease-out 0.4s both;
+    }
+
+    .cta-button:hover {
+      background-color: white;
+      color: #ff6b6b;
+      transform: translateY(-3px);
+    }
+
+    .right-section {
+      background: white;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 60px;
+      position: relative;
+    }
+
+    .right-content {
+      width: 100%;
+      max-width: 500px;
+      animation: slideInRight 0.8s ease-out;
+      text-align: center;
+    }
+
+    .error-code {
+      font-size: 120px;
+      font-weight: 700;
+      color: #ff6b6b;
+      line-height: 1;
+      margin-bottom: 20px;
+    }
+
+    .error-title {
+      font-size: 36px;
+      font-weight: 700;
+      color: #1a2332;
+      margin-bottom: 16px;
+    }
+
+    .error-message {
+      font-size: 16px;
+      color: #5a7a8a;
+      line-height: 1.6;
+      margin-bottom: 32px;
+    }
+
+    .home-button {
+      display: inline-block;
+      padding: 12px 32px;
+      background-color: #5a7a8a;
+      color: white;
+      text-decoration: none;
+      border-radius: 8px;
+      font-weight: 600;
+      transition: all 0.3s ease;
+    }
+
+    .home-button:hover {
+      background-color: #ff6b6b;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(255, 107, 107, 0.3);
+    }
+
+    .logo-link {
+      display: inline-block;
+      text-decoration: none;
+      position: absolute;
+      top: 20px;
+      left: 30px;
+      z-index: 101;
+      transition: all 0.3s ease;
+    }
+
+    .logo-link img {
+      width: 45px;
+      height: 45px;
+      object-fit: contain;
+      transition: transform 0.3s ease;
+    }
+
+    .logo-link:hover img {
+      transform: scale(1.1);
+    }
+
+    @keyframes slideInLeft {
+      from {
+        opacity: 0;
+        transform: translateX(-30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    @keyframes slideInRight {
+      from {
+        opacity: 0;
+        transform: translateX(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    @media (max-width: 1024px) {
+      .main-container {
+        grid-template-columns: 1fr;
+      }
+      .left-section {
+        padding: 40px;
+        min-height: 300px;
+      }
+      .left-title {
+        font-size: 36px;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .left-section {
+        padding: 30px;
+      }
+      .right-section {
+        padding: 40px 20px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .left-section {
+        padding: 20px;
+      }
+      .right-section {
+        padding: 20px;
+      }
+      .left-title {
+        font-size: 28px;
+      }
+      .error-code {
+        font-size: 80px;
+      }
+      .error-title {
+        font-size: 24px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <a href="/" class="logo-link" title="Go to Home">
+    <img src="static/images/favicon.png" alt="F.R.A.M.E Logo">
+  </a>
+  <div class="main-container">
+    <div class="left-section">
+      <div class="left-content">
+        <div class="left-title">Technical Difficulty</div>
+        <div class="left-description">Our team is working to resolve this issue. Please try again shortly or return to the homepage.</div>
+        <a href="/" class="cta-button">Go to Home</a>
+      </div>
+    </div>
+
+    <div class="right-section">
+      <div class="right-content">
+        <div class="error-code">Oops!</div>
+        <div class="error-title">Something Went Wrong</div>
+        <div class="error-message">
+          We encountered an unexpected error. Please check your connection and try again. If the problem persists, contact our support team.
+        </div>
+        <a href="/" class="home-button">Return to Home</a>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"
+    integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM"
+    crossorigin="anonymous"></script>
+</body>
+
+</html>

@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>F.R.A.M.E</title>
+  <link rel="icon" type="image/x-icon" href="static/images/favicon.ico">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet"
+    integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+    
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Poppins", sans-serif;
+        background: linear-gradient(135deg, #0c161f 0%, #06141B 100%);
+        min-height: 100vh;
+        color: white;
+        padding: 40px 20px;
+      }
+
+      /* Logo Container - Matching Attendance.html */
+      .logo-container {
+        position: absolute;
+        top: 30px;
+        left: 60px;
+        z-index: 10;
+      }
+
+      .logo-link {
+        display: inline-block;
+        text-decoration: none;
+        transition: all 0.3s ease;
+      }
+
+      .logo-link img {
+        width: 50px;
+        height: 50px;
+        object-fit: contain;
+        transition: transform 0.3s ease;
+        filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+      }
+
+      .logo-link:hover img {
+        transform: scale(1.1);
+      }
+
+      .page-header {
+        text-align: center;
+        margin-bottom: 40px;
+        animation: slideInDown 0.6s ease-out;
+        margin-top: 20px;
+      }
+
+      .page-title {
+        font-size: 44px;
+        font-weight: 700;
+        color: white;
+        margin-bottom: 16px;
+      }
+
+      .page-subtitle {
+        font-size: 20px;
+        color: #9BA8AB;
+      }
+
+      .message-alert {
+        max-width: 1000px;
+        margin: 0 auto 30px;
+        padding: 16px 20px;
+        background-color: rgba(255, 107, 107, 0.1);
+        border-left: 4px solid #ff6b6b;
+        border-radius: 8px;
+        color: #ff6b6b;
+        font-weight: 500;
+        animation: slideInUp 0.6s ease-out;
+      }
+
+      .container-wrapper {
+        max-width: 1100px;
+        margin: 0 auto;
+        position: relative;
+      }
+
+      .card {
+        background: #253745;
+        border-radius: 18px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        overflow: hidden;
+        animation: slideInUp 0.6s ease-out 0.2s both;
+      }
+
+      .card-header {
+        background: linear-gradient(135deg, #11212D 0%, #06141B 100%);
+        padding: 24px;
+        color: white;
+      }
+
+      .card-header h2 {
+        font-size: 24px;
+        font-weight: 700;
+        margin: 0;
+      }
+
+      .card-body {
+        padding: 30px;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+      }
+
+      thead {
+        background-color: #1a2332;
+        border-bottom: 2px solid #4a5c6a;
+      }
+
+      th {
+        padding: 16px;
+        text-align: left;
+        font-weight: 700;
+        color: #9BA8AB;
+        font-size: 14px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      td {
+        padding: 14px 16px;
+        border-bottom: 1px solid #4a5c6a;
+        font-size: 14px;
+        color: white;
+      }
+
+      tbody tr {
+        transition: background-color 0.3s ease;
+      }
+
+      tbody tr:hover {
+        background-color: rgba(255, 255, 255, 0.05);
+      }
+
+      tbody tr:nth-child(even) {
+        background-color: rgba(255, 255, 255, 0.03);
+      }
+
+      .action-buttons {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+
+      .form-select {
+        padding: 8px 12px;
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 8px;
+        font-size: 13px;
+        font-family: "Poppins", sans-serif;
+        color: white;
+        transition: all 0.3s ease;
+        min-width: 120px;
+      }
+
+      .form-select option {
+        background: #253745;
+        color: white;
+      }
+
+      .form-select:focus {
+        outline: none;
+        border-color: #4a5c6a;
+        box-shadow: 0 0 0 3px rgba(74, 92, 106, 0.3);
+      }
+
+      .btn-action {
+        padding: 8px 16px;
+        border: none;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        letter-spacing: 0.5px;
+      }
+
+      .btn-register {
+        background: linear-gradient(135deg, #11212D 0%, #06141B 100%);
+        color: white;
+      }
+
+      .btn-register:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      }
+
+      .btn-remove {
+        background: linear-gradient(135deg, #4a2424 0%, #611616 100%);
+        color: white;
+      }
+
+      .btn-remove:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(255, 107, 107, 0.3);
+      }
+
+      .no-data {
+        text-align: center;
+        padding: 40px 20px;
+        color: #9BA8AB;
+        font-size: 16px;
+      }
+
+      @keyframes slideInDown {
+        from {
+          opacity: 0;
+          transform: translateY(-20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      @keyframes slideInUp {
+        from {
+          opacity: 0;
+          transform: translateY(20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      @media (max-width: 768px) {
+        .logo-container {
+          top: 20px;
+          left: 30px;
+        }
+        
+        .page-title {
+          font-size: 32px;
+        }
+        
+        .card-body {
+          padding: 20px;
+        }
+        
+        th, td {
+          padding: 12px 8px;
+          font-size: 13px;
+        }
+        
+        .action-buttons {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 8px;
+        }
+        
+        .form-select {
+          width: 100%;
+        }
+        
+        .btn-action {
+          width: 100%;
+          text-align: center;
+        }
+      }
+
+      @media (max-width: 480px) {
+        body {
+          padding: 20px 10px;
+        }
+        
+        .logo-container {
+          top: 15px;
+          left: 20px;
+        }
+        
+        .page-title {
+          font-size: 24px;
+        }
+        
+        .card-body {
+          padding: 15px;
+        }
+        
+        table {
+          font-size: 12px;
+        }
+        
+        th, td {
+          padding: 10px 6px;
+        }
+        
+        .btn-action {
+          font-size: 12px;
+          padding: 6px 12px;
+        }
+        
+        .form-select {
+          font-size: 12px;
+          padding: 6px 10px;
+        }
+      }
+    </style>
+</head>
+
+<body>
+  <!-- Logo Container - Matching Attendance.html -->
+  <div class="logo-container">
+    <a href="/" class="logo-link" title="Go to Home">
+      <img src="static/images/favicon.png" alt="F.R.A.M.E Logo">
+    </a>
+  </div>
+  
+  <div class="page-header">
+    <div class="page-title">F.R.A.M.E</div>
+    <div class="page-subtitle">Facial Recognition Attendance Management System</div>
+  </div>
+
+  <div class="container-wrapper">
+    <div class="card">
+      <div class="card-header">
+        <h2>Unregistered Users</h2>
+      </div>
+      <div class="card-body">
+        {% if mess %}
+        <div class="message-alert">{{ mess }}</div>
+        {% endif %}
+
+        {% if l >= 1 %}
+        <table>
+          <thead>
+            <tr>
+              <th width="5%">No.</th>
+              <th>Name</th>
+              <th>ID</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for i in range(l) %}
+            <tr>
+              <td>{{ i+1 }}</td>
+              <td>{{ names[i] }}</td>
+              <td>{{ rolls[i] }}</td>
+              <td>
+                <div class="action-buttons">
+                  <form style="display: inline;" action='/registeruser' method="POST" enctype="multipart/form-data">
+                    <input type="hidden" name="index" value="{{ i }}"/>
+                    <select name="section" class="form-select" required>
+                      <option value="">Select Faculty</option>
+                      <option value="A">A</option>
+                      <option value="B">B</option>
+                      <option value="C">C</option>
+                      <option value="D">D</option>
+                      <option value="E">E</option>
+                      <option value="F">F</option>
+                      <option value="G">G</option>
+                      <option value="H">H</option>
+                      <option value="I">I</option>
+                      <option value="J">J</option>
+                      <option value="K">K</option>
+                    </select>
+                    <button type="submit" class="btn-action btn-register">Register</button>
+                  </form>
+                  <form style="display: inline;" action='/deleteunregistereduser' method="POST" enctype="multipart/form-data">
+                    <input type="hidden" name="index" value="{{ i }}"/>
+                    <button type="submit" class="btn-action btn-remove">Remove</button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="no-data">No unregistered users found.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"
+    integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM"
+    crossorigin="anonymous"></script>
+</body>
+
+</html>

@@ -1,0 +1,12 @@
+opencv-python
+Flask
+numpy
+scikit-learn==1.7.1
+pandas
+joblib
+tensorflow
+Pillow
+python-dotenv
+matplotlib
+flask-mysqldb
+werkzeug
