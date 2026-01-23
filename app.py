@@ -418,7 +418,9 @@ def attendancebtn():
     global cnn_model, class_names
     
     if len(os.listdir('static/faces')) == 0:
+        names, rolls, sec, times, dates, reg, l = extract_attendance()
         return render_template('Attendance.html', datetoday2=datetoday2,
+                               names=names, rolls=rolls, sec=sec, times=times, l=l,
                                mess='Database is empty! Register yourself first.')
 
     # Ensure model exists and is loaded
@@ -432,7 +434,9 @@ def attendancebtn():
         load_cnn_model()
 
     if cnn_model is None:
+        names, rolls, sec, times, dates, reg, l = extract_attendance()
         return render_template('Attendance.html', datetoday2=datetoday2,
+                               names=names, rolls=rolls, sec=sec, times=times, l=l,
                                mess='Failed to load or train model.')
 
     cap = cv2.VideoCapture(0)
