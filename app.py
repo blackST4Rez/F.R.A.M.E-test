@@ -5,7 +5,7 @@ import shutil
 from sklearn.neighbors import KNeighborsClassifier
 import pandas as pd
 import numpy as np
-from flask import Flask,render_template,redirect,request,session,g,url_for
+from flask import Flask,render_template,redirect,request,session,g,url_for,make_response
 from datetime import datetime, date
 import joblib
 from dotenv import load_dotenv
@@ -35,7 +35,7 @@ csp = {
 }
 
 # Force HTTPS in production, but allow HTTP for local testing
-Talisman(app, content_security_policy=csp, force_https=False)
+Talisman(app, content_security_policy=csp, force_https=False, session_cookie_secure=False)
 
 # Security: CSRF Protection
 csrf = CSRFProtect(app)
@@ -55,6 +55,9 @@ app.secret_key = os.getenv('SECRET_KEY') or 'dev-secret-key-change-in-production
 app.config.update(
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE='Lax',
+    SESSION_COOKIE_SECURE=False, # Allow cookies over HTTP for LAN access
+    SESSION_COOKIE_PATH='/',
+    SESSION_COOKIE_DOMAIN=None, # Allow all domains/IPs
 )
 
 # Flask error handler
@@ -153,7 +156,12 @@ def log_admin_action(admin_id, action, details):
 @app.before_request
 def before_request():
     g.user = None
+    # Debug cookies
+    # print(f"[DEBUG] Cookies: {request.cookies}")
+    
     if 'admin' in session:
+        # Debug print
+        print(f"[DEBUG] Session admin found: {session['admin']}")
         # Verify if admin still exists in database
         conn = get_db()
         cur = conn.cursor()
@@ -481,10 +489,17 @@ def add_attendance(name):
 # ======= Flask Home Page =========
 @app.route('/')
 def home():
+    resp = None
     if g.user:
-        return render_template('HomePage.html', admin=True, mess='Logged in as Administrator', user=session['admin'])
-
-    return render_template('HomePage.html', admin=False, datetoday2=datetoday2)
+        resp = make_response(render_template('HomePage.html', admin=True, mess='Logged in as Administrator', user=session['admin']))
+    else:
+        resp = make_response(render_template('HomePage.html', admin=False, datetoday2=datetoday2))
+    
+    # Disable caching
+    resp.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    resp.headers['Pragma'] = 'no-cache'
+    resp.headers['Expires'] = '0'
+    return resp
 
 @app.route('/attendance')
 def take_attendance():
