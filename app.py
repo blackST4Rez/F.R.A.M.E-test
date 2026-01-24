@@ -631,21 +631,15 @@ def adduserbtn():
     train_model()
     load_cnn_model()  # Reload the model after training
 
-    # Fetch updated unregistered students
+    # Fetch updated unregistered students count
     conn = get_db()
     cur = conn.cursor()
-    cur.execute("SELECT * FROM student WHERE status='unregistered' ORDER BY id ASC")
-    rows = cur.fetchall()
+    cur.execute("SELECT COUNT(*) FROM student WHERE status='unregistered'")
+    count = cur.fetchone()[0]
     conn.close()
 
-    names = [row['name'] for row in rows]
-    rolls = [str(row['id']) for row in rows]
-    sec = [row['section'] for row in rows]
-    l = len(rows)
-
-    return render_template('UnregisterUserList.html',
-                           names=names, rolls=rolls, sec=sec, l=l,
-                           mess=f'Number of Unregistered Students: {l}')
+    return render_template('HomePage.html', admin=False, datetoday2=datetoday2,
+                           mess=f'Registration successful! You are now pending approval. (Queue: {count})')
 
 @app.route('/attendancelist')
 def attendance_list():
@@ -1073,4 +1067,5 @@ def adminlog():
 if __name__ == '__main__':
     # Initialize database on startup
     init_db()
-    app.run(port=5001, debug=True)
+    # Run on all available network interfaces (0.0.0.0) to allow access from other devices on the same LAN
+    app.run(host='0.0.0.0', port=5001, debug=True)

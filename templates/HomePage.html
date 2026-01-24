@@ -207,9 +207,10 @@
     }
 
     .right-content {
-      max-width: 400px;
+      max-width: 600px;
       text-align: center;
       animation: slideInRight 0.8s ease-out;
+      margin-left: 100px;
     }
 
     @keyframes slideInRight {
@@ -289,8 +290,9 @@
 
     /* Quick Action Cards */
     .quick-actions {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
       gap: 16px;
       width: 100%;
       margin-top: 40px;
@@ -298,28 +300,34 @@
       z-index: 5;
     }
 
-    /* When not admin (only 2 items) */
-    .quick-actions:not(:has(.quick-action:nth-child(3))) {
-      max-width: 300px;
-      margin-left: auto;
-      margin-right: auto;
-    }
-
+    /* Admin View (Default): 2 items per row */
     .quick-action {
       background: white;
       border: 1px solid #e5e7eb;
       border-radius: 12px;
-      padding: 16px;
+      padding: 24px;
       text-align: center;
       transition: all 0.3s ease;
       cursor: pointer;
       text-decoration: none;
       color: #1a2332;
-      min-height: 120px;
+      min-height: 140px;
       display: flex;
       flex-direction: column;
       justify-content: center;
       align-items: center;
+      width: calc(50% - 8px); /* 2 items per row minus half-gap */
+    }
+
+    /* User View (3 items): 3 items per row */
+    .quick-actions:not(:has(.quick-action:nth-child(4))) {
+      max-width: 500px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .quick-actions:not(:has(.quick-action:nth-child(4))) .quick-action {
+      width: calc(33.333% - 11px); /* 3 items per row */
     }
 
     .quick-action:hover {
@@ -329,17 +337,53 @@
     }
 
     .quick-action img {
-      height: 40px;
-      margin-bottom: 8px;
+      height: 48px;
+      margin-bottom: 12px;
       object-fit: contain;
     }
 
     .quick-action-title {
-      font-size: 11px;
+      font-size: 13px;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.5px;
       color: #1a2332;
+    }
+
+    /* Admin Panel Specific Adjustments */
+    body[data-admin="true"] .quick-actions {
+      display: grid;
+      grid-template-columns: repeat(2, 140px);
+      justify-content: center;
+      gap: 20px;
+    }
+
+    body[data-admin="true"] .quick-action {
+      min-height: unset;
+      height: 140px;
+      width: 100%;
+      padding: 15px;
+    }
+
+    body[data-admin="true"] .quick-action:last-child {
+      grid-column: 1 / -1;
+      height: 60px;
+      flex-direction: row;
+      gap: 15px;
+      padding: 10px;
+    }
+
+    body[data-admin="true"] .quick-action:last-child img {
+      margin-bottom: 0;
+      height: 24px;
+    }
+
+    body[data-admin="true"] .quick-action img {
+      height: 40px;
+    }
+
+    body[data-admin="true"] .quick-action-title {
+      font-size: 12px;
     }
 
     /* Message Container */
@@ -683,12 +727,17 @@
 
         <!-- Quick Actions -->
         <div class="quick-actions">
+          {% if not admin %}
           <a href="/attendance" class="quick-action">
             <img src="static/images/attendance.png" alt="Attendance">
             <div class="quick-action-title">Attendance</div>
           </a>
 
-          {% if not admin %}
+          <a href="/adduser" class="quick-action">
+            <img src="static/images/add_new_user.png" alt="Register">
+            <div class="quick-action-title">Register</div>
+          </a>
+
           <a href="/login" class="quick-action">
             <img src="static/images/admin.png" alt="Admin">
             <div class="quick-action-title">Admin</div>
@@ -699,11 +748,6 @@
           <a href="/attendancelist" class="quick-action">
             <img src="static/images/attendance_list.png" alt="Records">
             <div class="quick-action-title">Records</div>
-          </a>
-
-          <a href="/adduser" class="quick-action">
-            <img src="static/images/add_new_user.png" alt="Add">
-            <div class="quick-action-title">Add User</div>
           </a>
 
           <a href="/registeruserlist" class="quick-action">
@@ -721,7 +765,7 @@
             <div class="quick-action-title">Logs</div>
           </a>
 
-          <a href="/login" class="quick-action" id="logoutLink">
+          <a href="/logout" class="quick-action" id="logoutLink">
             <img src="static/images/logout.png" alt="Logout">
             <div class="quick-action-title">Logout</div>
           </a>
