@@ -101,12 +101,25 @@ datetoday = date.today().strftime("%d-%m-%Y")
 datetoday2 = date.today().strftime("%d %B %Y")
 
 # Capture the video
-face_detector = cv2.CascadeClassifier('static/haarcascade_frontalface_default.xml')
-eye_detector = cv2.CascadeClassifier('static/haarcascade_eye.xml')
+base_dir = os.path.dirname(os.path.abspath(__file__))
+face_detector_path = os.path.join(base_dir, 'static', 'haarcascade_frontalface_default.xml')
+eye_detector_path = os.path.join(base_dir, 'static', 'haarcascade_eye.xml')
+
+face_detector = cv2.CascadeClassifier(face_detector_path)
+eye_detector = cv2.CascadeClassifier(eye_detector_path)
+
+if face_detector.empty():
+    print(f"[Error] Could not load face detector from {face_detector_path}")
+if eye_detector.empty():
+    print(f"[Error] Could not load eye detector from {eye_detector_path}")
+
 cap = cv2.VideoCapture(0)
 
 # ======= Check and Make Folders ========
-folders = ['static/faces', 'final_model']
+folders = [
+    os.path.join(base_dir, 'static', 'faces'),
+    os.path.join(base_dir, 'final_model')
+]
 for folder in folders:
     os.makedirs(folder, exist_ok=True)
     
@@ -116,7 +129,7 @@ class_names = {}
         
 # ======= Total Registered Users ========
 def totalreg():
-    faces_dir = 'static/faces'
+    faces_dir = os.path.join(base_dir, 'static', 'faces')
     if not os.path.isdir(faces_dir):
         return 0
     return len([name for name in os.listdir(faces_dir) if os.path.isdir(os.path.join(faces_dir, name))])
@@ -163,12 +176,12 @@ def identify_face(face_img):
         p2 = float(preds[top2])
 
         # Confidence floor and separation margin vs runner-up to avoid near-tie flips
-        CONFIDENCE_THRESHOLD = 0.7
-        MARGIN = 0.15
+        CONFIDENCE_THRESHOLD = 0.5
+        MARGIN = 0.1
 
-        if p1 < CONFIDENCE_THRESHOLD or (p1 - p2) < MARGIN:
+        if p1 < CONFIDENCE_THRESHOLD:
             return "Unknown"
-
+            
         # Map to class name
         return class_names.get(top1, "Unknown")
     
@@ -180,9 +193,9 @@ def identify_face(face_img):
 def train_model():
     global cnn_model, class_names
 
-    face_dir = 'static/faces'
-    model_path = 'final_model/face_recognition_model.h5'
-    class_path = 'final_model/class_names.pkl'
+    face_dir = os.path.join(base_dir, 'static', 'faces')
+    model_path = os.path.join(base_dir, 'final_model', 'face_recognition_model.h5')
+    class_path = os.path.join(base_dir, 'final_model', 'class_names.pkl')
 
     if not os.path.exists(face_dir) or len(os.listdir(face_dir)) == 0:
         print("[Info] No faces to train on.")
@@ -245,7 +258,7 @@ def train_model():
     )
 
     # Save model and class names
-    os.makedirs('final_model', exist_ok=True)
+    os.makedirs(os.path.join(base_dir, 'final_model'), exist_ok=True)
     cnn_model.save(model_path)
     
     # Create class names mapping from training data
@@ -260,8 +273,8 @@ def train_model():
 def load_cnn_model():
     global cnn_model, class_names
 
-    model_path = 'final_model/face_recognition_model.h5'
-    class_names_path = 'final_model/class_names.pkl'
+    model_path = os.path.join(base_dir, 'final_model', 'face_recognition_model.h5')
+    class_names_path = os.path.join(base_dir, 'final_model', 'class_names.pkl')
 
     # Load CNN model
     if os.path.exists(model_path):
@@ -287,7 +300,7 @@ def load_cnn_model():
 
     # Validate saved classes vs current face folders to avoid stale labels influencing predictions
     try:
-        faces_root = 'static/faces'
+        faces_root = os.path.join(base_dir, 'static', 'faces')
         if os.path.isdir(faces_root):
             current_dirs = {d for d in os.listdir(faces_root) if os.path.isdir(os.path.join(faces_root, d))}
             saved_labels = set(class_names.values()) if isinstance(class_names, dict) else set()
@@ -417,7 +430,14 @@ def take_attendance():
 def attendancebtn():
     global cnn_model, class_names
     
-    if len(os.listdir('static/faces')) == 0:
+    faces_dir = os.path.join(base_dir, 'static', 'faces')
+    # Check if faces directory exists and is not empty
+    if not os.path.exists(faces_dir):
+        os.makedirs(faces_dir, exist_ok=True)
+        
+    faces_count = len([name for name in os.listdir(faces_dir) if os.path.isdir(os.path.join(faces_dir, name))])
+    
+    if faces_count == 0:
         names, rolls, sec, times, dates, reg, l = extract_attendance()
         return render_template('Attendance.html', datetoday2=datetoday2,
                                names=names, rolls=rolls, sec=sec, times=times, l=l,
@@ -533,7 +553,7 @@ def adduserbtn():
         return render_template('AddUser.html', mess='Camera not available.')
 
     # Create user folder for storing images
-    userimagefolder = f'static/faces/{newusername}${newuserid}${newusersection}'
+    userimagefolder = os.path.join(base_dir, 'static', 'faces', f'{newusername}${newuserid}${newusersection}')
     if not os.path.isdir(userimagefolder):
         os.makedirs(userimagefolder)
 
@@ -542,9 +562,10 @@ def adduserbtn():
     cur = conn.cursor()
     cur.execute("SELECT * FROM student WHERE id = ?", (newuserid,))
     existing_user = cur.fetchone()
+    conn.close()  # Close connection regardless of result
+
     if existing_user:
         cap.release()
-        conn.close()
         return render_template('AddUser.html', mess='User already exists in database.')
 
     images_captured = 0
@@ -586,14 +607,25 @@ def adduserbtn():
         return render_template('AddUser.html', mess='Failed to capture valid face images.')
 
     # Insert new user into SQLite
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute("""
-        INSERT INTO student (name, id, section, status)
-        VALUES (?, ?, ?, 'unregistered')
-    """, (newusername, newuserid, newusersection))
-    conn.commit()
-    conn.close()
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO student (name, id, section, status)
+            VALUES (?, ?, ?, 'unregistered')
+        """, (newusername, newuserid, newusersection))
+        conn.commit()
+        conn.close()
+    except sqlite3.IntegrityError:
+        conn.close()
+        # Clean up the captured images if DB insert fails
+        if os.path.exists(userimagefolder):
+            shutil.rmtree(userimagefolder)
+        return render_template('AddUser.html', mess='User ID already exists. Please use a unique ID.')
+    except Exception as e:
+        conn.close()
+        print(f"[Error] Database insertion failed: {e}")
+        return render_template('AddUser.html', mess='An error occurred while saving user data.')
 
     # Retrain model immediately with new user
     train_model()
