@@ -240,9 +240,51 @@
   </div>
 
   <div class="container-wrapper">
+    
+    <!-- Registered Admins Card -->
+    <div class="card" style="margin-bottom: 30px;">
+      <div class="card-header">
+        <h2>Registered Admins</h2>
+      </div>
+      <div class="card-body">
+        {% if all_admins %}
+        <table>
+          <thead>
+            <tr>
+              <th>Admin ID</th>
+              <th>Username</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for admin in all_admins %}
+            <tr>
+              <td>{{ admin['admin_id'] }}</td>
+              <td>{{ admin['username'] }}</td>
+              <td>
+                {% if admin['admin_id'] == current_admin %}
+                <span style="color: #4cd137; font-weight: bold;">(You)</span>
+                {% else %}
+                <form action="{{ url_for('delete_admin') }}" method="POST" onsubmit="return confirm('Are you sure you want to delete admin {{ admin.username }}?');" style="display:inline;">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <input type="hidden" name="admin_id" value="{{ admin['admin_id'] }}">
+                  <button type="submit" style="background-color: #ff6b6b; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 600;">DELETE</button>
+                </form>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="no-data">No admins found.</div>
+        {% endif %}
+      </div>
+    </div>
+
     <div class="card">
       <div class="card-header">
-        <h2>Admin Log</h2>
+        <h2>Activity History</h2>
       </div>
       <div class="card-body">
         {% if mess %}

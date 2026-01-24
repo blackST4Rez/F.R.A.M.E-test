@@ -154,7 +154,21 @@ def log_admin_action(admin_id, action, details):
 def before_request():
     g.user = None
     if 'admin' in session:
-        g.user = session['admin']
+        # Verify if admin still exists in database
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute("SELECT 1 FROM admin_signup WHERE admin_id = ?", (session['admin'],))
+        admin_exists = cur.fetchone()
+        conn.close()
+        
+        if admin_exists:
+            g.user = session['admin']
+        else:
+            # Admin account was deleted - log them out immediately
+            session.pop('admin', None)
+            # Redirect to home page (skip for static files to avoid breaking page assets)
+            if request.endpoint and 'static' not in request.endpoint:
+                return redirect(url_for('home'))
 
 # Current Date & Time
 datetoday = date.today().strftime("%d-%m-%Y")
@@ -417,7 +431,7 @@ def extract_attendance():
     conn.close()
 
     if not rows:
-        return [], [], [], [], datetoday, [], 0
+        return [], [], [], [], [], [], 0
 
     names = [r['name'] for r in rows]
     rolls = [r['id'] for r in rows]
@@ -432,8 +446,10 @@ def extract_attendance():
             times.append(str(time_str)[:8])
     reg   = [r['status'] for r in rows]
     l     = len(rows)
+    datetoday_disp = date.today().strftime("%d-%m-%Y")
+    dates = [datetoday_disp] * l
 
-    return names, rolls, sec, times, datetoday, reg, l
+    return names, rolls, sec, times, dates, reg, l
 
 # ======== Save Attendance =========
 def add_attendance(name):
@@ -1134,24 +1150,67 @@ def adminlog():
     conn = get_db()
     cur = conn.cursor()
     
-    # Fetch all admin actions from admin_action_log joined with admin_signup
+    # Fetch all admins for the management list
+    cur.execute("SELECT * FROM admin_signup")
+    all_admins = cur.fetchall()
+    
+    # Fetch all admin actions
     cur.execute("""
         SELECT l.admin_id, s.username, l.action, l.details, l.timestamp
         FROM admin_action_log l
-        JOIN admin_signup s ON l.admin_id = s.admin_id
+        LEFT JOIN admin_signup s ON l.admin_id = s.admin_id
         ORDER BY l.id DESC
     """)
     logs = cur.fetchall()
     conn.close()
 
     admin_ids = [log['admin_id'] for log in logs]
-    usernames = [log['username'] for log in logs]
+    usernames = [log['username'] if log['username'] else 'Deleted Admin' for log in logs]
     actions = [log['action'] for log in logs]
     details = [log['details'] for log in logs]
     timestamps = [log['timestamp'] for log in logs]
 
-    return render_template('AdminLog.html', admin_ids=admin_ids, usernames=usernames, 
-                           actions=actions, details=details, timestamps=timestamps, l=len(logs))
+    return render_template('AdminLog.html', 
+                           admin_ids=admin_ids, 
+                           usernames=usernames, 
+                           actions=actions, 
+                           details=details, 
+                           timestamps=timestamps, 
+                           l=len(logs),
+                           all_admins=all_admins,
+                           current_admin=session['admin'])
+
+@app.route('/delete_admin', methods=['POST'])
+def delete_admin():
+    if 'admin' not in session:
+        return redirect(url_for('login'))
+        
+    target_admin_id = request.form['admin_id']
+    current_admin_id = session['admin']
+    
+    # Prevent self-deletion
+    if target_admin_id == current_admin_id:
+        return redirect(url_for('adminlog', mess="Cannot delete your own account!"))
+        
+    conn = get_db()
+    cur = conn.cursor()
+    
+    try:
+        # Delete the admin
+        cur.execute("DELETE FROM admin_signup WHERE admin_id = ?", (target_admin_id,))
+        
+        # Log the action
+        log_admin_action(current_admin_id, 'DELETE ADMIN', f'Deleted admin account: {target_admin_id}')
+        
+        conn.commit()
+        mess = f"Admin {target_admin_id} deleted successfully."
+    except Exception as e:
+        conn.rollback()
+        mess = f"Error deleting admin: {str(e)}"
+    finally:
+        conn.close()
+        
+    return redirect(url_for('adminlog', mess=mess))
 
 # Main Function
 if __name__ == '__main__':
