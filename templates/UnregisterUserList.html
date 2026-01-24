@@ -357,6 +357,7 @@
               <td>
                 <div class="action-buttons">
                   <form style="display: inline;" action='/registeruser' method="POST" enctype="multipart/form-data">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <input type="hidden" name="index" value="{{ i }}"/>
                     <select name="section" class="form-select" required>
                       <option value="">Select Faculty</option>
@@ -375,6 +376,7 @@
                     <button type="submit" class="btn-action btn-register">Register</button>
                   </form>
                   <form style="display: inline;" action='/deleteunregistereduser' method="POST" enctype="multipart/form-data">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <input type="hidden" name="index" value="{{ i }}"/>
                     <button type="submit" class="btn-action btn-remove">Remove</button>
                   </form>

@@ -14,13 +14,48 @@ from tensorflow import keras
 import sqlite3
 from werkzeug.security import generate_password_hash, check_password_hash
 import pickle
+from flask_talisman import Talisman
+from flask_wtf.csrf import CSRFProtect
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 
 load_dotenv()
 # Initializing the flask app
 
 app=Flask(__name__)
+
+# Security: Content Security Policy (CSP)
+# Since we use inline scripts and styles, and external CDNs, we need to configure CSP carefully
+csp = {
+    'default-src': ["'self'", 'https://cdn.jsdelivr.net', 'https://fonts.googleapis.com', 'https://fonts.gstatic.com'],
+    'script-src': ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net'],
+    'style-src': ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com', 'https://cdn.jsdelivr.net'],
+    'img-src': ["'self'", 'data:'],
+    'font-src': ["'self'", 'https://fonts.gstatic.com']
+}
+
+# Force HTTPS in production, but allow HTTP for local testing
+Talisman(app, content_security_policy=csp, force_https=False)
+
+# Security: CSRF Protection
+csrf = CSRFProtect(app)
+
+# Security: Rate Limiting
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri="memory://"
+)
+
 # Set secret key from environment variable, or use a fallback for development
 app.secret_key = os.getenv('SECRET_KEY') or 'dev-secret-key-change-in-production-12a6bfc9462626cc3ccbf316185931465fb8b1041699bb4f8cfc10418305280c'
+
+# Security: Session Cookie Configuration
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE='Lax',
+)
 
 # Flask error handler
 @app.errorhandler(404)
@@ -86,8 +121,33 @@ def init_db():
         )
     """)
     
+    # Create admin_action_log table for detailed audit trail
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS admin_action_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            admin_id TEXT NOT NULL,
+            action TEXT NOT NULL,
+            details TEXT,
+            timestamp TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (admin_id) REFERENCES admin_signup(admin_id)
+        )
+    """)
+    
     conn.commit()
     conn.close()
+
+# Helper function to log admin actions
+def log_admin_action(admin_id, action, details):
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute("INSERT INTO admin_action_log (admin_id, action, details) VALUES (?, ?, ?)", 
+                   (admin_id, action, details))
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"Error logging action: {e}")
+
     
 # Flask assign admin
 @app.before_request
@@ -778,6 +838,9 @@ def unregisteruser():
         (userid,)
     )
     conn.commit()
+    
+    # Log action
+    log_admin_action(session['admin'], 'UNREGISTER USER', f'Unregistered user {userid} ({username})')
 
     # Return updated list of registered students
     cur.execute("SELECT * FROM student WHERE status='registered' ORDER BY id ASC")
@@ -846,6 +909,9 @@ def deleteunregistereduser():
     cur.execute("DELETE FROM student WHERE id = ? AND status='unregistered'", (userid,))
     conn.commit()
     conn.close()
+    
+    # Log action
+    log_admin_action(session['admin'], 'DELETE USER', f'Deleted unregistered user {userid} ({username})')
 
     return redirect(url_for('unregister_user_list'))
     
@@ -910,6 +976,9 @@ def registeruser():
     )
     conn.commit()
 
+    # Log action
+    log_admin_action(session['admin'], 'APPROVE USER', f'Approved user {userid} ({name}) to section {section}')
+
     # Reload unregistered list
     cur.execute("SELECT * FROM student WHERE status='unregistered' ORDER BY id ASC")
     rows = cur.fetchall()
@@ -954,6 +1023,9 @@ def deleteregistereduser():
     conn.commit()
     conn.close()
 
+    # Log action
+    log_admin_action(session['admin'], 'DELETE USER', f'Deleted registered user {userid} ({username})')
+
     # Refresh list
     return redirect(url_for('register_user_list'))
 
@@ -982,6 +1054,15 @@ def login():
                             (admin_id, user['username']))
                 conn.commit()
                 print("Stored login record for:", admin_id)
+                
+                # Log action
+                try:
+                    cur.execute("INSERT INTO admin_action_log (admin_id, action, details) VALUES (?, ?, ?)", 
+                               (admin_id, 'LOGIN', 'Admin logged in'))
+                    conn.commit()
+                except Exception as ex:
+                    print(f"Error logging login action: {ex}")
+                    
             except Exception as e:
                 conn.rollback()
                 print("!!!Error inserting login record:", e)
@@ -1027,6 +1108,11 @@ def signup():
             # Insert new user
             cur.execute("INSERT INTO admin_signup (admin_id, username, password) VALUES (?, ?, ?)",
                         (admin_id, username, hashed_password))
+            
+            # Log action
+            cur.execute("INSERT INTO admin_action_log (admin_id, action, details) VALUES (?, ?, ?)", 
+                       (admin_id, 'SIGNUP', 'New admin account created'))
+            
             conn.commit()
             mess = "Account created successfully! Please log in."
             conn.close()
@@ -1048,10 +1134,10 @@ def adminlog():
     conn = get_db()
     cur = conn.cursor()
     
-    # Fetch all admin users from signup table
+    # Fetch all admin actions from admin_action_log joined with admin_signup
     cur.execute("""
-        SELECT l.admin_id, s.username 
-        FROM admin_login l
+        SELECT l.admin_id, s.username, l.action, l.details, l.timestamp
+        FROM admin_action_log l
         JOIN admin_signup s ON l.admin_id = s.admin_id
         ORDER BY l.id DESC
     """)
@@ -1060,12 +1146,32 @@ def adminlog():
 
     admin_ids = [log['admin_id'] for log in logs]
     usernames = [log['username'] for log in logs]
+    actions = [log['action'] for log in logs]
+    details = [log['details'] for log in logs]
+    timestamps = [log['timestamp'] for log in logs]
 
-    return render_template('AdminLog.html', admin_ids=admin_ids, usernames=usernames, l=len(logs))
+    return render_template('AdminLog.html', admin_ids=admin_ids, usernames=usernames, 
+                           actions=actions, details=details, timestamps=timestamps, l=len(logs))
 
 # Main Function
 if __name__ == '__main__':
     # Initialize database on startup
     init_db()
+    
+    # Get local IP address to show user
+    import socket
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        local_ip = s.getsockname()[0]
+        s.close()
+        print(f"\n{'='*50}")
+        print(f"Server is running!")
+        print(f"To access from this computer: http://localhost:5001")
+        print(f"To access from other devices: http://{local_ip}:5001")
+        print(f"{'='*50}\n")
+    except:
+        print("Could not determine local IP. Try 'ipconfig' in terminal.")
+
     # Run on all available network interfaces (0.0.0.0) to allow access from other devices on the same LAN
     app.run(host='0.0.0.0', port=5001, debug=True)

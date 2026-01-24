@@ -388,6 +388,7 @@
           <div class="right-title">Log In</div>
           {% if mess %}<div class="message">{{ mess }}</div>{% endif %}
           <form action="/login" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
             <div class="form-group">
               <label for="admin_id">Admin ID</label>
               <input

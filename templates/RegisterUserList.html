@@ -325,10 +325,12 @@
               <td>
                 <div class="action-buttons">
                   <form style="display: inline;" action='/unregisteruser' method="POST" enctype="multipart/form-data">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <input type="hidden" name="index" value="{{ i }}"/>
                     <button type="submit" class="btn-action btn-unregister">Unregister</button>
                   </form>
-                  <form style="display: inline;" action='/deleteregistereduser' method="POST" enctype="multipart/form-data">
+                  <form style="display: inline;" action='/deleteuser' method="POST" enctype="multipart/form-data">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <input type="hidden" name="index" value="{{ i }}"/>
                     <button type="submit" class="btn-action btn-remove">Remove</button>
                   </form>

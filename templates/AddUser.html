@@ -250,6 +250,7 @@
         {% endif %}
 
         <form action='/adduserbtn' method="POST" enctype="multipart/form-data">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
           <div class="form-group">
             <label for="newusername">Username</label>
             <input type="text" id="newusername" name='newusername' class="form-control" required placeholder="Enter username">

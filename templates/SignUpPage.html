@@ -387,6 +387,7 @@
           <div class="right-title">Sign Up</div>
           {% if mess %}<div class="message">{{ mess }}</div>{% endif %}
           <form action="/signup" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
             <div class="form-group">
               <label for="admin_id">Admin ID</label>
               <input
