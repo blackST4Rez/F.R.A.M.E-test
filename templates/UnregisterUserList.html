@@ -130,36 +130,46 @@
         font-size: 14px;
         text-transform: uppercase;
         letter-spacing: 0.5px;
+        vertical-align: middle;
       }
 
       td {
         padding: 14px 16px;
         border-bottom: 1px solid #4a5c6a;
         font-size: 14px;
-        color: white;
+        color: #06141B;
+        vertical-align: middle;
       }
 
       tbody tr {
         transition: background-color 0.3s ease;
         background-color: white;
-
       }
 
       .action-buttons {
         display: flex;
+        justify-content: flex-start;
         gap: 8px;
         flex-wrap: wrap;
         align-items: center;
+        width: auto;
+      }
+
+      .action-buttons form {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 0;
       }
 
       .form-select {
         padding: 8px 12px;
         background: rgba(255, 255, 255, 0.1);
-        border: 1px solid rgba(255, 255, 255, 0.2);
+        border: 1px solid #06141B;
         border-radius: 8px;
         font-size: 13px;
         font-family: "Poppins", sans-serif;
-        color: white;
+        color: #06141B;
         transition: all 0.3s ease;
         min-width: 120px;
       }
@@ -350,7 +360,7 @@
               <td>{{ rolls[i] }}</td>
               <td>
                 <div class="action-buttons">
-                  <form style="display: inline;" action='/registeruser' method="POST" enctype="multipart/form-data">
+                  <form action='/registeruser' method="POST" enctype="multipart/form-data">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <input type="hidden" name="index" value="{{ i }}"/>
                     <select name="section" class="form-select" required>
@@ -369,7 +379,7 @@
                     </select>
                     <button type="submit" class="btn-action btn-register">Register</button>
                   </form>
-                  <form style="display: inline;" action='/deleteunregistereduser' method="POST" enctype="multipart/form-data">
+                  <form action='/deleteunregistereduser' method="POST" enctype="multipart/form-data">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <input type="hidden" name="index" value="{{ i }}"/>
                     <button type="submit" class="btn-action btn-remove">Remove</button>
