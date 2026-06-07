@@ -18,9 +18,9 @@
 
       body {
         font-family: "Poppins", sans-serif;
-        background: linear-gradient(135deg, #0c161f 0%, #06141B 100%);
+        background: white;
         min-height: 100vh;
-        color: white;
+        color: #06141B;
         padding: 40px 20px;
       }
 
@@ -60,25 +60,31 @@
       .page-title {
         font-size: 44px;
         font-weight: 700;
-        color: white;
+        color: #06141B;
         margin-bottom: 16px;
       }
 
       .page-subtitle {
         font-size: 20px;
-        color: #9BA8AB;
+        color: #06141B;
       }
 
       .message-alert {
         max-width: 1000px;
         margin: 0 auto 30px;
         padding: 16px 20px;
-        background-color: rgba(255, 107, 107, 0.1);
-        border-left: 4px solid #ff6b6b;
+        background-color: rgba(62, 213, 143, 0.1);
+        border-left: 4px solid #58dfa7;
         border-radius: 8px;
-        color: #ff6b6b;
+        color: #06141B;
         font-weight: 500;
         animation: slideInUp 0.6s ease-out;
+      }
+
+      .message-alert.error-message {
+        background-color: rgba(255, 107, 107, 0.1);
+        border-left-color: #ff6b6b;
+        color: #06141B;
       }
 
       .container-wrapper {
@@ -88,7 +94,7 @@
       }
 
       .card {
-        background: #253745;
+        background: white;
         border-radius: 18px;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
         overflow: hidden;
@@ -96,9 +102,9 @@
       }
 
       .card-header {
-        background: linear-gradient(135deg, #11212D 0%, #06141B 100%);
+        background: white;
         padding: 24px;
-        color: white;
+        color: #06141B;
       }
 
       .card-header h2 {
@@ -118,15 +124,15 @@
       }
 
       thead {
-        background-color: #11212D;
-        border-bottom: 2px solid #4a5c6a;
+        background-color: #4a5c6a3e;
+        border-bottom: 1px solid #06141B;
       }
 
       th {
         padding: 16px;
         text-align: left;
         font-weight: 700;
-        color: #9BA8AB;
+        color: #06141B;
         font-size: 14px;
         text-transform: uppercase;
         letter-spacing: 0.5px;
@@ -219,8 +225,8 @@
       .no-data {
         text-align: center;
         padding: 40px 20px;
-        color: #9BA8AB;
-        font-size: 16px;
+        color: #06141B;
+        font-size: 20px;
       }
 
       @keyframes slideInDown {
@@ -328,7 +334,7 @@
   </div>
   
   <div class="page-header">
-    <div class="page-title">F.R.A.M.E</div>
+    <div class="page-title">Attendance System</div>
     <div class="page-subtitle">Facial Recognition Attendance Management System</div>
   </div>
 
@@ -339,7 +345,7 @@
       </div>
       <div class="card-body">
         {% if mess %}
-        <div class="message-alert">{{ mess }}</div>
+        <div class="message-alert{% if mess == 'Database is empty!' %} error-message{% endif %}">{{ mess }}</div>
         {% endif %}
 
         {% if l >= 1 %}
@@ -362,26 +368,21 @@
                 <div class="action-buttons">
                   <form action='/registeruser' method="POST" enctype="multipart/form-data">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                    <input type="hidden" name="index" value="{{ i }}"/>
-                    <select name="section" class="form-select" required>
-                      <option value="">Select Faculty</option>
-                      <option value="A">A</option>
-                      <option value="B">B</option>
+                    <input type="hidden" name="user_id" value="{{ rolls[i] }}"/>
+                    <select name="subject" class="form-select" required>
+                      <option value="">Select Subject</option>
                       <option value="C">C</option>
-                      <option value="D">D</option>
-                      <option value="E">E</option>
-                      <option value="F">F</option>
-                      <option value="G">G</option>
-                      <option value="H">H</option>
-                      <option value="I">I</option>
-                      <option value="J">J</option>
-                      <option value="K">K</option>
+                      <option value="Java">Java</option>
+                      <option value="C++">C++</option>
+                      <option value="Python">Python</option>
+                      <option value="Ruby">Ruby</option>
+                      <option value="C#">C#</option>
                     </select>
                     <button type="submit" class="btn-action btn-register">Register</button>
                   </form>
                   <form action='/deleteunregistereduser' method="POST" enctype="multipart/form-data">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                    <input type="hidden" name="index" value="{{ i }}"/>
+                    <input type="hidden" name="user_id" value="{{ rolls[i] }}"/>
                     <button type="submit" class="btn-action btn-remove">Remove</button>
                   </form>
                 </div>

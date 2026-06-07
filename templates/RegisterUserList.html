@@ -18,9 +18,9 @@
 
       body {
         font-family: "Poppins", sans-serif;
-        background: linear-gradient(135deg, #0c161f 0%, #06141B 100%);
+        background: white;
         min-height: 100vh;
-        color: white;
+        color: #06141B;
         padding: 40px 20px;
       }
 
@@ -60,13 +60,13 @@
       .page-title {
         font-size: 44px;
         font-weight: 700;
-        color: white;
+        color: #06141B;
         margin-bottom: 16px;
       }
 
       .page-subtitle {
         font-size: 20px;
-        color: #9BA8AB;
+        color: #06141B;
       }
 
       .message-alert {
@@ -76,9 +76,15 @@
         background-color: rgba(27, 200, 142, 0.1);
         border-left: 4px solid #1dcf93;
         border-radius: 8px;
-        color: whit;
+        color: #06141B;
         font-weight: 500;
         animation: slideInUp 0.6s ease-out;
+      }
+
+      .message-alert.error-message {
+        background-color: rgba(255, 107, 107, 0.1);
+        border-left-color: #ff6b6b;
+        color: #06141B;
       }
 
       .container-wrapper {
@@ -88,7 +94,7 @@
       }
 
       .card {
-        background: #253745;
+        background: white;
         border-radius: 18px;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
         overflow: hidden;
@@ -96,9 +102,9 @@
       }
 
       .card-header {
-        background: linear-gradient(135deg, #11212D 0%, #06141B 100%);
+        background: white;
         padding: 24px;
-        color: white;
+        color: #06141B;
       }
 
       .card-header h2 {
@@ -118,15 +124,15 @@
       }
 
       thead {
-        background-color: #11212D;
-        border-bottom: 2px solid #4a5c6a;
+        background-color: #4a5c6a3e;
+        border-bottom: 1px solid #06141B;
       }
 
       th {
         padding: 16px;
         text-align: left;
         font-weight: 700;
-        color: white;
+        color: #06141B;
         font-size: 14px;
         text-transform: uppercase;
         letter-spacing: 0.5px;
@@ -184,8 +190,8 @@
       .no-data {
         text-align: center;
         padding: 40px 20px;
-        color: #9BA8AB;
-        font-size: 16px;
+        color: #06141B;
+        font-size: 20px;
       }
 
       @keyframes slideInDown {
@@ -283,7 +289,7 @@
   </div>
   
   <div class="page-header">
-    <div class="page-title">F.R.A.M.E</div>
+    <div class="page-title">Attendance System</div>
     <div class="page-subtitle">Facial Recognition Attendance Management System</div>
   </div>
 
@@ -294,7 +300,7 @@
       </div>
       <div class="card-body">
         {% if mess %}
-        <div class="message-alert">{{ mess }}</div>
+        <div class="message-alert{% if mess == 'Database is empty!' %} error-message{% endif %}">{{ mess }}</div>
         {% endif %}
 
         {% if l >= 1 %}
@@ -304,7 +310,7 @@
               <th width="5%">No.</th>
               <th>Name</th>
               <th>ID</th>
-              <th>Section</th>
+              <th>Subject</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -314,17 +320,17 @@
               <td>{{ i+1 }}</td>
               <td>{{ names[i] }}</td>
               <td>{{ rolls[i] }}</td>
-              <td>{{ sec[i] }}</td>
+              <td>{{ sub[i] }}</td>
               <td>
                 <div class="action-buttons">
                   <form style="display: inline;" action='/unregisteruser' method="POST" enctype="multipart/form-data">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                    <input type="hidden" name="index" value="{{ i }}"/>
+                    <input type="hidden" name="user_id" value="{{ rolls[i] }}"/>
                     <button type="submit" class="btn-action btn-unregister">Unregister</button>
                   </form>
-                  <form style="display: inline;" action='/deleteuser' method="POST" enctype="multipart/form-data">
+                  <form style="display: inline;" action='/deleteregistereduser' method="POST" enctype="multipart/form-data">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                    <input type="hidden" name="index" value="{{ i }}"/>
+                    <input type="hidden" name="user_id" value="{{ rolls[i] }}"/>
                     <button type="submit" class="btn-action btn-remove">Remove</button>
                   </form>
                 </div>

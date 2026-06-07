@@ -77,6 +77,13 @@ def get_db():
     conn.row_factory = sqlite3.Row  # This makes rows accessible like dictionaries
     return conn
 
+
+def ensure_column_exists(cur, table, column, definition):
+    cur.execute(f"PRAGMA table_info({table})")
+    columns = [row["name"] for row in cur.fetchall()]
+    if column not in columns:
+        cur.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
+
 # Initialize database tables
 def init_db():
     """Create database tables if they don't exist"""
@@ -89,6 +96,7 @@ def init_db():
             id TEXT PRIMARY KEY,
             name TEXT NOT NULL,
             section TEXT,
+            subject TEXT,
             status TEXT NOT NULL
         )
     """)
@@ -99,10 +107,14 @@ def init_db():
             id TEXT NOT NULL,
             name TEXT NOT NULL,
             section TEXT,
+            subject TEXT,
             time TEXT NOT NULL,
             FOREIGN KEY (id) REFERENCES student(id)
         )
     """)
+    
+    ensure_column_exists(cur, 'student', 'subject', 'TEXT')
+    ensure_column_exists(cur, 'attendance', 'subject', 'TEXT')
     
     # Create admin_signup table
     cur.execute("""
@@ -427,7 +439,7 @@ def extract_attendance():
     datetoday_sqlite = date.today().strftime("%Y-%m-%d")
         
     query = """
-        SELECT a.name, a.id, a.section, a.time,
+        SELECT a.name, a.id, a.section, a.subject, a.time,
                COALESCE(s.status, 'Unknown') AS status
         FROM attendance a
         LEFT JOIN student s ON a.id = s.id
@@ -439,25 +451,29 @@ def extract_attendance():
     conn.close()
 
     if not rows:
-        return [], [], [], [], [], [], 0
+        return [], [], [], [], [], [], [], 0
 
     names = [r['name'] for r in rows]
     rolls = [r['id'] for r in rows]
     sec   = [r['section'] for r in rows]
     # SQLite3 stores time as string, so parse it
     times = []
+    subjects = []
     for r in rows:
         time_str = r['time']
         if isinstance(time_str, str) and ' ' in time_str:
             times.append(time_str.split(' ')[1][:8])  # Extract time part
         else:
             times.append(str(time_str)[:8])
+
+        subjects.append(r['subject'] if r['subject'] else 'N/A')
+
     reg   = [r['status'] for r in rows]
     l     = len(rows)
     datetoday_disp = date.today().strftime("%d-%m-%Y")
     dates = [datetoday_disp] * l
 
-    return names, rolls, sec, times, dates, reg, l
+    return names, rolls, sec, times, dates, reg, subjects, l
 
 # ======== Save Attendance =========
 def add_attendance(name):
@@ -467,22 +483,16 @@ def add_attendance(name):
     conn = get_db()
     cur = conn.cursor()
 
-    # Check if already marked today (ignoring time, only by DATE)
-    cur.execute("""
-        SELECT * FROM attendance 
-        WHERE id=? AND date(time)=?
-    """, (userid, datetime.now().strftime("%Y-%m-%d")))
-    already = cur.fetchone()
+    # Always insert a new attendance row for each confirmed face scan.
+    # This will allow multiple entries across the same day with different times.
+    cur.execute("SELECT subject FROM student WHERE id = ?", (userid,))
+    student_row = cur.fetchone()
+    subject = student_row['subject'] if student_row and student_row['subject'] else None
 
-    if already:
-        conn.close()
-        return 
-
-    # Insert new attendance with full date+time
     cur.execute("""
-        INSERT INTO attendance (id, name, section, time)
-        VALUES (?, ?, ?, ?)
-    """, (userid, username, usersection, current_datetime))
+        INSERT INTO attendance (id, name, section, subject, time)
+        VALUES (?, ?, ?, ?, ?)
+    """, (userid, username, usersection, subject, current_datetime))
     conn.commit()
     conn.close()
 
@@ -503,66 +513,61 @@ def home():
 
 @app.route('/attendance')
 def take_attendance():
-    # Fetch today's attendance from MySQL
-    names, rolls, sec, times, dates, reg, l = extract_attendance()
-    
+    names, rolls, sec, times, dates, reg, subjects, l = extract_attendance()
     return render_template(
         'Attendance.html',
         names=names,
         rolls=rolls,
         sec=sec,
         times=times,
+        subjects=subjects,
         l=l,
         datetoday2=datetoday2
     )
-    
-    
+
+
 @app.route('/attendancebtn', methods=['GET'])
 def attendancebtn():
     global cnn_model, class_names
-    
+
     faces_dir = os.path.join(base_dir, 'static', 'faces')
-    # Check if faces directory exists and is not empty
     if not os.path.exists(faces_dir):
         os.makedirs(faces_dir, exist_ok=True)
-        
+
     faces_count = len([name for name in os.listdir(faces_dir) if os.path.isdir(os.path.join(faces_dir, name))])
-    
     if faces_count == 0:
-        names, rolls, sec, times, dates, reg, l = extract_attendance()
+        names, rolls, sec, times, dates, reg, subjects, l = extract_attendance()
         return render_template('Attendance.html', datetoday2=datetoday2,
-                               names=names, rolls=rolls, sec=sec, times=times, l=l,
+                               names=names, rolls=rolls, sec=sec, times=times, subjects=subjects, l=l,
                                mess='Database is empty! Register yourself first.')
 
-    # Ensure model exists and is loaded
     if cnn_model is None:
         print("[INFO] Model not loaded, attempting to load...")
         load_cnn_model()
-        
+
     if cnn_model is None:
         print("[INFO] No model found, training new model...")
         train_model()
         load_cnn_model()
 
     if cnn_model is None:
-        names, rolls, sec, times, dates, reg, l = extract_attendance()
+        names, rolls, sec, times, dates, reg, subjects, l = extract_attendance()
         return render_template('Attendance.html', datetoday2=datetoday2,
-                               names=names, rolls=rolls, sec=sec, times=times, l=l,
+                               names=names, rolls=rolls, sec=sec, times=times, subjects=subjects, l=l,
                                mess='Failed to load or train model.')
 
     cap = cv2.VideoCapture(0)
     if cap is None or not cap.isOpened():
-        names, rolls, sec, times, dates, reg, l = extract_attendance()
-        return render_template('Attendance.html', names=names, rolls=rolls, sec=sec, times=times, l=l,
+        names, rolls, sec, times, dates, reg, subjects, l = extract_attendance()
+        return render_template('Attendance.html', names=names, rolls=rolls, sec=sec, times=times, subjects=subjects, l=l,
                                totalreg=totalreg(), datetoday2=datetoday2, mess='Camera not available.')
 
     ret = True
-    # temporal smoothing & lock-on
     consecutive_counts = {}
     current_lock = None
-    lock_grace = 10  # frames to keep lock if momentarily lost
+    lock_grace = 10
     lock_timer = 0
-    NEED_CONSEC = 5   # frames required to confirm identity
+    NEED_CONSEC = 5
 
     while ret:
         ret, frame = cap.read()
@@ -573,9 +578,9 @@ def attendancebtn():
 
         if faces is not None and len(faces) > 0:
             for i, (x, y, w, h) in enumerate(faces):
-                if w < 100 or h < 100:  # Skip very small faces
+                if w < 100 or h < 100:
                     continue
-                    
+
                 if i < len(eyes_list) and len(eyes_list[i]) > 0:
                     cv2.rectangle(frame, (x, y), (x + w, y + h), (255, 0, 20), 2)
                     for (ex, ey, ew, eh) in eyes_list[i]:
@@ -584,12 +589,10 @@ def attendancebtn():
                     face_img = cv2.resize(frame[y:y + h, x:x + w], (224, 224))
                     identified_person = identify_face(face_img)
 
-                    # If we already locked an identity, keep it as long as lock_timer remains
                     if current_lock is not None and '$' in current_lock:
                         identified_person_name, identified_person_id, *_ = current_lock.split('$')
                         lock_timer = lock_grace
                     else:
-                        # Build up consecutive evidence before locking and marking attendance
                         if identified_person is not None and '$' in identified_person:
                             consecutive_counts[identified_person] = consecutive_counts.get(identified_person, 0) + 1
                             if consecutive_counts[identified_person] >= NEED_CONSEC:
@@ -606,9 +609,7 @@ def attendancebtn():
                                 cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 20), 2, cv2.LINE_AA)
                     cv2.putText(frame, 'Press Esc to close', (30, 90),
                                 cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 127, 255), 2, cv2.LINE_AA)
-
         else:
-            # if no faces, decay the lock
             if current_lock is not None:
                 lock_timer -= 1
                 if lock_timer <= 0:
@@ -624,8 +625,8 @@ def attendancebtn():
     cap.release()
     cv2.destroyAllWindows()
 
-    names, rolls, sec, times, dates, reg, l = extract_attendance()
-    return render_template('Attendance.html', names=names, rolls=rolls, sec=sec, times=times, l=l,
+    names, rolls, sec, times, dates, reg, subjects, l = extract_attendance()
+    return render_template('Attendance.html', names=names, rolls=rolls, sec=sec, times=times, subjects=subjects, l=l,
                            datetoday2=datetoday2)
 
 @app.route('/adduser')
@@ -730,16 +731,16 @@ def adduserbtn():
     conn.close()
 
     return render_template('HomePage.html', admin=False, datetoday2=datetoday2,
-                           mess=f'Registration successful! You are now pending approval. (Queue: {count})')
+                        mess=f'Registration successful! You are now pending approval. (Queue: {count})')
 
 @app.route('/attendancelist')
 def attendance_list():
     if not g.user:
         return render_template('LogInForm.html')
 
-    names, rolls, sec, times, dates, reg, l = extract_attendance()
+    names, rolls, sec, times, dates, reg, subjects, l = extract_attendance()
     return render_template('AttendanceList.html', names=names, rolls=rolls, sec=sec, times=times, dates=dates, reg=reg,
-                           l=l)
+                        subjects=subjects, l=l)
     
 # ========== Flask Search Attendance by Date ============
 @app.route('/attendancelistdate', methods=['GET', 'POST'])
@@ -752,7 +753,7 @@ def attendancelistdate():
     conn = get_db()
     cur = conn.cursor()
     cur.execute("""
-        SELECT a.name, a.id, a.section, a.time,
+        SELECT a.name, a.id, a.section, a.subject, a.time,
                COALESCE(s.status, 'Unknown') AS status
         FROM attendance a
         LEFT JOIN student s ON a.id = s.id
@@ -763,7 +764,7 @@ def attendancelistdate():
     conn.close()
 
     if not rows:
-        return render_template('AttendanceList.html', names=[], rolls=[], sec=[], times=[], reg=[], l=0,
+        return render_template('AttendanceList.html', names=[], rolls=[], sec=[], times=[], dates=[], reg=[], subjects=[], l=0,
                                mess="No records for this date.")
 
     names = [r['name'] for r in rows]
@@ -772,6 +773,7 @@ def attendancelistdate():
     # SQLite3 stores time as string, parse it
     times = []
     dates = []
+    subjects = []
     for r in rows:
         time_str = r['time']
         if isinstance(time_str, str) and ' ' in time_str:
@@ -780,12 +782,14 @@ def attendancelistdate():
         else:
             times.append(str(time_str)[:8])
             dates.append(str(time_str)[:10])
+
+        subjects.append(r['subject'] if r['subject'] else 'N/A')
     reg = [r['status'] for r in rows]
     l = len(rows)
 
     return render_template('AttendanceList.html',
                         names=names, rolls=rolls, sec=sec,
-                        times=times, dates=dates, reg=reg,
+                        times=times, dates=dates, reg=reg, subjects=subjects,
                         l=l, mess=f"Total Attendance: {l}")
 
 # ========== Flask Search Attendance by ID ============
@@ -811,6 +815,7 @@ def attendancelistid():
         # SQLite3 stores time as string, parse it
         times = []
         dates = []
+        subjects = []
         for row in rows:
             time_str = row['time']
             if time_str and isinstance(time_str, str) and ' ' in time_str:
@@ -819,11 +824,14 @@ def attendancelistid():
             else:
                 times.append("N/A")
                 dates.append("N/A")
+
+            subjects.append(row['subject'] if row['subject'] else 'N/A')
+
         reg   = ['Registered' if row['id'] in [r['id'] for r in rows] else 'Unregistered' for row in rows]
         l = len(rows)
         return render_template('AttendanceList.html',
                                names=names, rolls=rolls, sec=sec,
-                               times=times, dates=dates, reg=reg,
+                               times=times, dates=dates, reg=reg, subjects=subjects,
                                l=l, mess=f"Total Attendance: {l}")
     else:
         return render_template('AttendanceList.html',
@@ -838,24 +846,24 @@ def unregisteruser():
         return render_template('LogInForm.html')
 
     try:
-        idx = int(request.form['index'])
-    except (ValueError, KeyError):
-        return "Invalid index (not a number or missing)", 400
+        user_id = request.form['user_id']
+    except KeyError:
+        return "Invalid request", 400
 
     conn = get_db()
     cur = conn.cursor()
-    # Get only registered students
-    cur.execute("SELECT * FROM student WHERE status='registered' ORDER BY id ASC")
-    registered = cur.fetchall()
+    
+    # Fetch user by ID and verify they're registered
+    cur.execute("SELECT * FROM student WHERE id=? AND status='registered'", (user_id,))
+    user = cur.fetchone()
 
-    if idx < 0 or idx >= len(registered):
+    if not user:
         conn.close()
-        return "Invalid index", 400
+        return "Invalid user index", 400
 
-    user = registered[idx]
     userid, username, section = user['id'], user['name'], user['section']
 
-        # Move the face folder (optional)
+    # Move the face folder (optional)
     old_folder = f"static/faces/{username}${userid}${section}"
     new_folder = f"static/faces/{username}${userid}$None"
     if os.path.exists(old_folder):
@@ -863,9 +871,9 @@ def unregisteruser():
             shutil.rmtree(new_folder)
         shutil.move(old_folder, new_folder)
         
-    # Update status in single student table
+    # Update status in single student table and clear subject selection
     cur.execute(
-        "UPDATE student SET status='unregistered', section=NULL WHERE id=?",
+        "UPDATE student SET status='unregistered', subject=NULL WHERE id=?",
         (userid,)
     )
     conn.commit()
@@ -880,12 +888,12 @@ def unregisteruser():
 
     names = [r['name'] for r in rows]
     rolls = [r['id'] for r in rows]
-    sec = [r['section'] for r in rows]
+    sub = [r['subject'] for r in rows]
     l = len(rows)
 
     mess = f'Number of Registered Students: {l}' if l > 0 else "Database is empty!"
 
-    return render_template('RegisterUserList.html', names=names, rolls=rolls, sec=sec, l=l, mess=mess)
+    return render_template('RegisterUserList.html', names=names, rolls=rolls, sub=sub, l=l, mess=mess)
 
 # ========== Flask Unregister User List ============
 @app.route('/unregisteruserlist')
@@ -916,19 +924,22 @@ def deleteunregistereduser():
     if not g.user:
         return render_template('LogInForm.html')
 
-    idx = int(request.form['index'])
+    try:
+        user_id = request.form['user_id']
+    except KeyError:
+        return "Invalid request", 400
 
     conn = get_db()
     cur = conn.cursor()
-    # Fetch unregistered students only
-    cur.execute("SELECT * FROM student WHERE status='unregistered' ORDER BY id ASC")
-    unregistered = cur.fetchall()
+    
+    # Fetch user by ID and verify they're unregistered
+    cur.execute("SELECT * FROM student WHERE id=? AND status='unregistered'", (user_id,))
+    user = cur.fetchone()
 
-    if idx >= len(unregistered):
+    if not user:
         conn.close()
         return render_template('UnregisterUserList.html', names=[], rolls=[], sec=[], l=0, mess="Invalid user index.")
 
-    user = unregistered[idx]
     username, userid, usersec = user['name'], user['id'], user['section']
 
     folder = f'static/faces/{username}${userid}${usersec}'
@@ -961,11 +972,11 @@ def register_user_list():
 
     names = [row['name'] for row in rows]
     rolls = [row['id'] for row in rows]
-    sec = [row['section'] for row in rows]
+    sub = [row['subject'] for row in rows]
     l = len(rows)
 
     mess = f'Number of Registered Students: {l}' if l else "Database is empty!"
-    return render_template('RegisterUserList.html', names=names, rolls=rolls, sec=sec, l=l, mess=mess)
+    return render_template('RegisterUserList.html', names=names, rolls=rolls, sub=sub, l=l, mess=mess)
         
 # ========== Flask Register a User ============
 @app.route('/registeruser', methods=['POST'])
@@ -974,73 +985,78 @@ def registeruser():
         return render_template('LogInForm.html')
 
     try:
-        idx = int(request.form['index'])
-        section = request.form['section']
-    except (ValueError, KeyError):
+        user_id = request.form['user_id']
+        subject = request.form['subject']
+    except KeyError:
         return "Invalid input", 400
 
     conn = get_db()
     cur = conn.cursor()
-    # Get all unregistered students
-    cur.execute("SELECT * FROM student WHERE status='unregistered' ORDER BY id ASC")
-    unregistered = cur.fetchall()
+    
+    # Fetch user by ID and verify they're unregistered
+    cur.execute("SELECT * FROM student WHERE id=? AND status='unregistered'", (user_id,))
+    user = cur.fetchone()
 
-    if idx < 0 or idx >= len(unregistered):
+    if not user:
         conn.close()
         return "Invalid user index", 400
 
-    user = unregistered[idx]
-    name, userid = user['name'], user['id']
+    userid, username, section = user['id'], user['name'], user['section']
 
-    # Move the face folder
-    old_folder = f"static/faces/{name}${userid}$None"
-    new_folder = f"static/faces/{name}${userid}${section}"
+    # Move the face folder (optional)
+    old_folder = f"static/faces/{username}${userid}${section}"
+    new_folder = f"static/faces/{username}${userid}$None"
     if os.path.exists(old_folder):
         if os.path.exists(new_folder):
             shutil.rmtree(new_folder)
         shutil.move(old_folder, new_folder)
-
-    # Update status and section in single student table
+        
+    # Update status in single student table and set subject selection
     cur.execute(
-        "UPDATE student SET status='registered', section=? WHERE id=?",
-        (section, userid)
+        "UPDATE student SET status='registered', subject=? WHERE id=?",
+        (subject, userid)
     )
     conn.commit()
-
+    
     # Log action
-    log_admin_action(session['admin'], 'APPROVE USER', f'Approved user {userid} ({name}) to section {section}')
+    log_admin_action(session['admin'], 'REGISTER USER', f'Registered user {userid} ({username}) for subject {subject}')
 
-    # Reload unregistered list
+    # Return updated list of unregistered students
     cur.execute("SELECT * FROM student WHERE status='unregistered' ORDER BY id ASC")
     rows = cur.fetchall()
     conn.close()
 
     names = [r['name'] for r in rows]
-    rolls = [r['id'] for r in rows]  # Fixed: use 'id' instead of 'user_id'
+    rolls = [r['id'] for r in rows]
     secs = [r['section'] for r in rows]
     l = len(rows)
 
     mess = f'Number of Unregistered Students: {l}' if l > 0 else "Database is empty!"
+
     return render_template('UnregisterUserList.html', names=names, rolls=rolls, sec=secs, l=l, mess=mess)
-        
+
 # ========== Flask Delete a User from Registered List ============
 @app.route('/deleteregistereduser', methods=['POST'])
 def deleteregistereduser():
     if not g.user:
         return render_template('LogInForm.html')
 
-    idx = int(request.form['index'])
+    try:
+        user_id = request.form['user_id']
+    except KeyError:
+        return "Invalid request", 400
 
     conn = get_db()
     cur = conn.cursor()
-    cur.execute("SELECT * FROM student WHERE status='registered' ORDER BY id ASC")
-    registered = cur.fetchall()
+    
+    # Fetch user by ID and verify they're registered
+    cur.execute("SELECT * FROM student WHERE id=? AND status='registered'", (user_id,))
+    user = cur.fetchone()
 
-    if idx >= len(registered):
+    if not user:
         conn.close()
-        return render_template('RegisterUserList.html', names=[], rolls=[], sec=[], l=0, mess="Invalid user index.")
+        return render_template('RegisterUserList.html', names=[], rolls=[], sub=[], l=0, mess="Invalid user index.")
 
-    user = registered[idx]
     username, userid, usersec = user['name'], user['id'], user['section']
 
     # Delete face folder
