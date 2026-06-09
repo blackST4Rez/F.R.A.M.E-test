@@ -96,6 +96,7 @@ def init_db():
             id TEXT PRIMARY KEY,
             name TEXT NOT NULL,
             section TEXT,
+            semester TEXT,
             subject TEXT,
             status TEXT NOT NULL
         )
@@ -114,6 +115,7 @@ def init_db():
     """)
     
     ensure_column_exists(cur, 'student', 'subject', 'TEXT')
+    ensure_column_exists(cur, 'student', 'semester', 'TEXT')
     ensure_column_exists(cur, 'attendance', 'subject', 'TEXT')
     
     # Create admin_signup table
@@ -638,6 +640,7 @@ def adduserbtn():
     newusername = request.form['newusername']
     newuserid = request.form['newuserid']
     newusersection = request.form['newusersection']
+    newusersemester = request.form['newusersemester']
 
     # Open camera
     cap = cv2.VideoCapture(0)
@@ -703,9 +706,9 @@ def adduserbtn():
         conn = get_db()
         cur = conn.cursor()
         cur.execute("""
-            INSERT INTO student (name, id, section, status)
-            VALUES (?, ?, ?, 'unregistered')
-        """, (newusername, newuserid, newusersection))
+            INSERT INTO student (name, id, section, semester, status)
+            VALUES (?, ?, ?, ?, 'unregistered')
+        """, (newusername, newuserid, newusersection, newusersemester))
         conn.commit()
         conn.close()
     except sqlite3.IntegrityError:
@@ -779,6 +782,58 @@ def attendancelistdate():
         if isinstance(time_str, str) and ' ' in time_str:
             times.append(time_str.split(' ')[1][:8])  # Extract time part
             dates.append(time_str.split(' ')[0])  # Extract date part
+        else:
+            times.append(str(time_str)[:8])
+            dates.append(str(time_str)[:10])
+
+        subjects.append(r['subject'] if r['subject'] else 'N/A')
+    reg = [r['status'] for r in rows]
+    l = len(rows)
+
+    return render_template('AttendanceList.html',
+                        names=names, rolls=rolls, sec=sec,
+                        times=times, dates=dates, reg=reg, subjects=subjects,
+                        l=l, mess=f"Total Attendance: {l}")
+
+# ========== Flask Search Attendance by Semester ============
+@app.route('/attendancelistsemester', methods=['GET', 'POST'])
+def attendancelistsemester():
+    if not g.user:
+        return render_template('LogInForm.html')
+
+    semester_selected = request.form.get('semester', '').strip()
+    if not semester_selected:
+        return render_template('AttendanceList.html', names=[], rolls=[], sec=[], times=[], dates=[], reg=[], subjects=[], l=0,
+                               mess="No semester provided!")
+
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT a.name, a.id, a.section, a.subject, a.time,
+               COALESCE(s.status, 'Unknown') AS status
+        FROM attendance a
+        LEFT JOIN student s ON a.id = s.id
+        WHERE LOWER(TRIM(s.semester)) = LOWER(TRIM(?))
+        ORDER BY a.time ASC
+    """, (semester_selected,))
+    rows = cur.fetchall()
+    conn.close()
+
+    if not rows:
+        return render_template('AttendanceList.html', names=[], rolls=[], sec=[], times=[], dates=[], reg=[], subjects=[], l=0,
+                               mess=f"No records found for semester: {semester_selected}")
+
+    names = [r['name'] for r in rows]
+    rolls = [r['id'] for r in rows]
+    sec = [r['section'] for r in rows]
+    times = []
+    dates = []
+    subjects = []
+    for r in rows:
+        time_str = r['time']
+        if isinstance(time_str, str) and ' ' in time_str:
+            times.append(time_str.split(' ')[1][:8])
+            dates.append(time_str.split(' ')[0])
         else:
             times.append(str(time_str)[:8])
             dates.append(str(time_str)[:10])
