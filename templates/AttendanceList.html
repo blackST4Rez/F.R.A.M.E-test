@@ -76,7 +76,7 @@
         background-color: rgba(76, 217, 156, 0.1);
         border-left: 4px solid #1cdfa8;
         border-radius: 8px;
-        color: #1cdfa8;
+        color: #06141B;
         font-weight: 500;
         animation: slideInUp 0.6s ease-out;
       }
@@ -117,19 +117,27 @@
 
       .search-section {
         display: grid;
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 20px;
         margin-bottom: 30px;
+        align-items: stretch;
+      }
+
+      .search-section form {
+        width: 100%;
       }
 
       .search-group {
         display: flex;
         gap: 12px;
-        align-items: center;
+        align-items: stretch;
+        width: 100%;
       }
 
       .search-input {
         flex: 1;
+        min-width: 0;
+        height: 42px;
         padding: 10px 16px;
         background: rgba(255, 255, 255, 0.1);
         border: 1px solid #06141B;
@@ -138,6 +146,11 @@
         font-family: "Poppins", sans-serif;
         color: #06141B;
         transition: all 0.3s ease;
+      }
+
+      .search-btn {
+        min-width: 150px;
+        height: 42px;
       }
 
       .search-input::placeholder {
@@ -278,12 +291,14 @@
 
         .search-group {
           flex-direction: column;
+          align-items: stretch;
         }
 
         .search-btn {
           width: 100%;
+          min-width: 0;
+          height: 42px;
         }
-      }
 
       @media (max-width: 768px) {
         .logo-container {
@@ -370,6 +385,13 @@
             <div class="search-group">
               <input type="date" id="date" name="date" class="search-input" required>
               <button type='submit' class='search-btn'>Search by Date</button>
+            </div>
+          </form>
+          <form action='/attendancelistsemester' method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <div class="search-group">
+              <input type="text" id="semester" name="semester" class="search-input" placeholder="Enter Semester" required>
+              <button type='submit' class='search-btn'>Search by Semester</button>
             </div>
           </form>
           <form action='/attendancelistid' method="POST" enctype="multipart/form-data">

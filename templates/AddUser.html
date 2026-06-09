@@ -147,6 +147,26 @@
         background: white;
       }
 
+      .form-select {
+        width: 100%;
+        padding: 12px 16px;
+        background: white;
+        border: 1px solid #4A5C6A;
+        border-radius: 8px;
+        font-size: 14px;
+        font-family: "Poppins", sans-serif;
+        color: #06141B;
+        transition: all 0.3s ease;
+      }
+
+      .form-select:focus {
+        color: #06141B;
+        outline: none;
+        border-color: #1cdfa8;
+        box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.1);
+        background: white;
+      }
+
       .btn-submit {
         width: 100%;
         padding: 12px;
@@ -265,6 +285,21 @@
           <div class="form-group">
             <label for="newusersection">Section</label>
             <input type="text" id="newusersection" name='newusersection' class="form-control" required placeholder="Enter section">
+          </div>
+
+          <div class="form-group">
+            <label for="newusersemester">Semester</label>
+            <select id="newusersemester" name="newusersemester" class="form-select" required>
+              <option value="">Select semester</option>
+              <option value="1st Semester">1st Semester</option>
+              <option value="2nd Semester">2nd Semester</option>
+              <option value="3rd Semester">3rd Semester</option>
+              <option value="4th Semester">4th Semester</option>
+              <option value="5th Semester">5th Semester</option>
+              <option value="6th Semester">6th Semester</option>
+              <option value="7th Semester">7th Semester</option>
+              <option value="8th Semester">8th Semester</option>
+            </select>
           </div>
 
           <button type='submit' class='btn-submit'>Submit</button>
